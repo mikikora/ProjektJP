@@ -6,6 +6,8 @@ OBJS = support.cmo syntax.cmo core.cmo parser.cmo lexer.cmo main.cmo
 
 all: $(DEPEND) $(OBJS) f
 
+install: clean f
+
 f: $(OBJS) 
 	ocamlc -o $@ $(OBJS)
 

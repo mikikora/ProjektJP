@@ -1,38 +1,37 @@
 open Format
 
-
 type term =
-    TmVar of string
+  | TmVar of string
   | TmAbs of string * term
   | TmApp of term * term
-(* liczby naturalne *)
+  (* liczby naturalne *)
   | TmNum of int
   | TmAdd of term * term
   | TmMul of term * term
   | TmSub of term * term
-  | TmEq  of term * term
-(* wartosci logiczne *)
-  | TmTru 
-  | TmFal 
-  | TmIf  of term * term * term
-(* rekursja *)
+  | TmEq of term * term
+  (* wartosci logiczne *)
+  | TmTru
+  | TmFal
+  | TmIf of term * term * term
+  (* rekursja *)
   | TmFix of term
-(* pary *)
+  (* pary *)
   | TmPair of term * term
   | TmFst of term
   | TmSnd of term
   (* listy *)
-  | TmNil 
+  | TmNil
   | TmCons of term * term
   | TmHd of term
   | TmTl of term
   | TmIsNil of term
 
 type raw_term =
-    TRId of string
-  | TRVar of int
-  | TRAbs of string * int
-  | TRApp of raw_term * raw_term
-
+  | TrId of string
+  | TrVar of int
+  | TrAbs of raw_term
+  | TrApp of raw_term * raw_term
 
 val print_term : term -> unit
+val print_raw_term : raw_term -> unit

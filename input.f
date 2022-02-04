@@ -1,3 +1,1 @@
-
-(lambda x . (x + 0))
-(fix z);
+if (3 + 2) = 5 then nil else (1::nil)

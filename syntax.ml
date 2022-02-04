@@ -120,36 +120,32 @@ and print_aterm = function
       print_string ")";
       close_box ()
 
-
 let rec print_raw_term = function
-  | TrAbs t -> 
-    open_hvbox 1;
-    print_string "lambda.";
-    print_space ();
-    print_raw_term t;
-    close_box()
+  | TrAbs t ->
+      open_hvbox 1;
+      print_string "lambda.";
+      print_space ();
+      print_raw_term t;
+      close_box ()
   | t -> print_raw_appterm t
 
 and print_raw_appterm = function
-  | TrApp (t1, t2) -> 
-    open_hvbox 0;
-    print_raw_appterm t1;
-    print_space ();
-    print_raw_aterm t2;
-    close_box ()
+  | TrApp (t1, t2) ->
+      open_hvbox 0;
+      print_raw_appterm t1;
+      print_space ();
+      print_raw_aterm t2;
+      close_box ()
   | t -> print_raw_aterm t
 
 and print_raw_aterm = function
   | TrId v -> print_string v
   | TrVar n -> print_int n
-  | t -> 
-    open_hvbox 1;
-    print_string "(";
-    print_cut ();
-    print_raw_term t;
-    print_cut ();
-    print_string ")";
-    close_box ()
-    
-  
-
+  | t ->
+      open_hvbox 1;
+      print_string "(";
+      print_cut ();
+      print_raw_term t;
+      print_cut ();
+      print_string ")";
+      close_box ()

@@ -29,7 +29,11 @@ let main () =
   let unfolded = unfold (fst parsed) in
   print_raw_term unfolded;
   print_newline ();
-  print_flush();
+  print_flush ();
+  let res = normalize unfolded [] in
+  print_raw_term res;
+  print_newline ();
+  print_flush ();
   exit 0
 
 let _ = main ()

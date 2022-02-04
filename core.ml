@@ -1,6 +1,8 @@
 open Syntax
 open Support.Error
+open Format
 
+(* type used to differentiate lambda and variables existing before unfolding *)
 type unsugar_term =
   | UsVar of string
   | UsOldVar of string
@@ -8,23 +10,23 @@ type unsugar_term =
   | UsOldAbs of string * unsugar_term
   | UsApp of unsugar_term * unsugar_term
 
-type keys = 
-  | KVar of string
-  | KOldVar of string
+(* type and module used in removing names from variables *)
+type keys = KVar of string | KOldVar of string
 
 module Keys = struct
   type t = keys
 
-  let compare t1 t2 = 
-    match t1, t2 with
+  let compare t1 t2 =
+    match (t1, t2) with
     | KVar v1, KVar v2 -> String.compare v1 v2
     | KOldVar v1, KOldVar v2 -> String.compare v1 v2
     | KVar _, KOldVar _ -> -1
     | KOldVar _, KVar _ -> 1
 end
 
-module KeyMap = Map.Make(Keys)
+module KeyMap = Map.Make (Keys)
 
+(* unfold all terms to raw lambda expressions *)
 let unfold t =
   (* remove sugar returns lambda expression with named variables,
      abstractions and applications *)
@@ -120,11 +122,13 @@ let unfold t =
         UsApp (UsApp (new_t2, prd), new_t1)
     | TmEq (t1, t2) ->
         let fls = remove_sugar TmFal and tru = remove_sugar TmTru in
-        let _and b c = UsApp (UsApp (UsVar "b", UsVar "c"), fls) in
+        let _and =
+          UsAbs ("b", UsAbs ("c", UsApp (UsApp (UsVar "b", UsVar "c"), fls)))
+        in
         let iszero m = UsApp (UsApp (m, UsAbs ("x", fls)), tru) in
         let s1 = remove_sugar (TmSub (t1, t2))
         and s2 = remove_sugar (TmSub (t2, t1)) in
-        _and (iszero s1) (iszero s2)
+        UsApp (UsApp (_and, iszero s1), iszero s2)
     | TmNil -> UsAbs ("f", UsAbs ("n", UsVar "n"))
     | TmCons (t1, t2) ->
         let new_t1 = remove_sugar t1 and new_t2 = remove_sugar t2 in
@@ -172,37 +176,98 @@ let unfold t =
         let new_t1 = unsugar_to_term t1 and new_t2 = unsugar_to_term t2 in
         TmApp (new_t1, new_t2)
   in
-
-  let rec remove_names (t : unsugar_term)
-      (gamma : int KeyMap.t) : raw_term =
+  (* Removes names from variables *)
+  let rec remove_names (t : unsugar_term) (gamma : int KeyMap.t) : raw_term =
     let add_elem elem map =
       let new_map = KeyMap.map (function n -> n + 1) map in
-      KeyMap.add elem 0 new_map
+      KeyMap.update elem (function _ -> Some 0) new_map
     in
     match t with
-    | UsVar v -> (match KeyMap.find_opt (KVar v) gamma with
-      | Some n -> TrVar n
-      | None -> failwith "free usvar")
-    | UsOldVar v -> (match KeyMap.find_opt (KOldVar v) gamma with
-      | Some n -> TrVar n
-      | None -> TrId v)
-    | UsAbs (v,t) -> 
-      let new_gamma = add_elem (KVar v) gamma in
-      let new_t = remove_names t new_gamma in
-      TrAbs new_t
-    | UsOldAbs (v,t) ->
-      let new_gamma = add_elem (KOldVar v) gamma in
-      let new_t = remove_names t new_gamma in
-      TrAbs new_t
+    | UsVar v -> (
+        match KeyMap.find_opt (KVar v) gamma with
+        | Some n -> TrVar n
+        | None -> failwith "free usvar")
+    | UsOldVar v -> (
+        match KeyMap.find_opt (KOldVar v) gamma with
+        | Some n -> TrVar n
+        | None -> TrId v)
+    | UsAbs (v, t) ->
+        let new_gamma = add_elem (KVar v) gamma in
+        let new_t = remove_names t new_gamma in
+        TrAbs new_t
+    | UsOldAbs (v, t) ->
+        let new_gamma = add_elem (KOldVar v) gamma in
+        let new_t = remove_names t new_gamma in
+        TrAbs new_t
     | UsApp (t1, t2) ->
-      let new_t1 = remove_names t1 gamma
-      and new_t2 = remove_names t2 gamma in
-      TrApp (new_t1, new_t2)
+        let new_t1 = remove_names t1 gamma and new_t2 = remove_names t2 gamma in
+        TrApp (new_t1, new_t2)
   in
 
   let unsugar = remove_sugar t in
   let to_print = unsugar_to_term unsugar in
-  let () = print_term to_print in
-  let () = print_newline () in
-  let () = print_newline () in
-  remove_names unsugar (KeyMap.empty)
+  print_term to_print;
+  print_newline ();
+  remove_names unsugar KeyMap.empty
+
+type 'a env = 'a list
+type machine_value = Clo of raw_term * machine_value env
+type stack = (term * machine_value env) list
+
+let print_debug v =
+  print_string ("debug" ^ v);
+  print_newline ();
+  print_flush ()
+
+let rec krivine t env cont =
+  match t with
+  | TrVar n ->
+      let (Clo (t', env')) = List.nth env n in
+      krivine t' env' cont
+  | TrAbs t' -> (
+      match cont with
+      | [] ->
+          (t, env, cont) (* Tutaj sprawdzić przy wypakowywaniu czy działa env *)
+      | (t'', env') :: cont' -> krivine t' (Clo (t'', env') :: env) cont')
+  | TrApp (t1, t2) -> krivine t1 env ((t2, env) :: cont)
+  | TrId s -> (t, env, cont)
+
+let rec is_beta_normal t (e : machine_value env) =
+  let rec a t e =
+    match t with
+    | TrId _ -> true
+    | TrApp (t1, t2) -> a t1 e && is_beta_normal t2 e
+    | TrVar n ->
+        let (Clo (new_t, new_e)) = List.nth e n in
+        a new_t new_e
+    | _ -> false
+  in
+  match t with
+  | TrAbs t -> is_beta_normal t (Clo (TrId "absurd", []) :: e)
+  | TrVar n ->
+      let (Clo (new_t, new_e)) = List.nth e n in
+      is_beta_normal new_t new_e
+  | _ -> a t e
+
+let rec subtitute_from_env t (e : machine_value env) =
+  if e = [] then t
+  else
+    match t with
+    | TrId _ -> t
+    | TrVar n ->
+        let (Clo (t', e')) = List.nth e n in
+        subtitute_from_env t' e'
+    | TrAbs t' -> TrAbs (subtitute_from_env t' e)
+    | TrApp (t1, t2) ->
+        let t1' = subtitute_from_env t1 e and t2' = subtitute_from_env t2 e in
+        TrApp (t1', t2')
+
+let rec normalize t (e : machine_value env) =
+  if is_beta_normal t e then subtitute_from_env t e (* rebuild t from e *)
+  else
+    let new_t, env, cont = krivine t e [] in
+    let normalized_t = normalize new_t env in
+    let normalize_cont = List.map (function t, e -> normalize t e) cont in
+    List.fold_left
+      (fun acc elem -> TrApp (acc, elem))
+      normalized_t normalize_cont

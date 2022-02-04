@@ -34,5 +34,5 @@ type raw_term =
   | TrAbs of raw_term
   | TrApp of raw_term * raw_term
 
-val print_term : term -> unit
-val print_raw_term : raw_term -> unit
+val pp_print_term : Format.formatter -> term -> unit
+val pp_print_raw_term : Format.formatter -> raw_term -> unit

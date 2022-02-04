@@ -35,64 +35,64 @@ type raw_term =
   | TrApp of raw_term * raw_term
 
 (* printer *)
-let rec print_term = function
+let rec pp_print_term fmtr = function
   | TmIf (t1, t2, t3) ->
-      open_hvbox 0;
-      print_string "if";
-      print_space ();
-      print_term t1;
-      print_space ();
-      print_string "then";
-      print_space ();
-      print_term t2;
-      print_space ();
-      print_string "else";
-      print_space ();
-      print_term t3;
-      close_box ()
+      pp_open_hvbox fmtr 0;
+      pp_print_string fmtr "if";
+      pp_print_space fmtr ();
+      pp_print_term fmtr t1;
+      pp_print_space fmtr ();
+      pp_print_string fmtr "then";
+      pp_print_space fmtr ();
+      pp_print_term fmtr t2;
+      pp_print_space fmtr ();
+      pp_print_string fmtr "else";
+      pp_print_space fmtr ();
+      pp_print_term fmtr t3;
+      pp_close_box fmtr ()
   | TmAbs (id, t) ->
-      open_hvbox 1;
-      print_string "lambda ";
-      print_string id;
-      print_string ".";
-      print_space ();
-      print_term t;
-      close_box ()
+      pp_open_hvbox fmtr 1;
+      pp_print_string fmtr "lambda ";
+      pp_print_string fmtr id;
+      pp_print_string fmtr ".";
+      pp_print_space fmtr ();
+      pp_print_term fmtr t;
+      pp_close_box fmtr ()
   | TmPair (t1, t2) ->
-      open_hovbox 1;
-      print_string "(";
-      print_space ();
-      print_term t1;
-      print_string ",";
-      print_space ();
-      print_term t2;
-      print_string ")";
-      close_box ()
-  | t -> print_appterm t
+      pp_open_hovbox fmtr 1;
+      pp_print_string fmtr "(";
+      pp_print_space fmtr ();
+      pp_print_term fmtr t1;
+      pp_print_string fmtr ",";
+      pp_print_space fmtr ();
+      pp_print_term fmtr t2;
+      pp_print_string fmtr ")";
+      pp_close_box fmtr ()
+  | t -> pp_print_appterm fmtr t
 
-and print_appterm t =
+and pp_print_appterm fmtr t =
   let print_two t1 t2 sym =
-    open_hvbox 0;
-    print_aterm t1;
-    print_space ();
-    print_string sym;
-    print_space ();
-    print_aterm t2;
-    close_box ()
+    pp_open_hvbox fmtr 0;
+    pp_print_aterm fmtr t1;
+    pp_print_space fmtr ();
+    pp_print_string fmtr sym;
+    pp_print_space fmtr ();
+    pp_print_aterm fmtr t2;
+    pp_close_box fmtr ()
   and print_one t sym =
-    open_hvbox 0;
-    print_string sym;
-    print_space ();
-    print_aterm t;
-    close_box ()
+    pp_open_hvbox fmtr 0;
+    pp_print_string fmtr sym;
+    pp_print_space fmtr ();
+    pp_print_aterm fmtr t;
+    pp_close_box fmtr ()
   in
   match t with
   | TmApp (t1, t2) ->
-      open_hvbox 0;
-      print_appterm t1;
-      print_space ();
-      print_aterm t2;
-      close_box ()
+      pp_open_hvbox fmtr 0;
+      pp_print_appterm fmtr t1;
+      pp_print_space fmtr ();
+      pp_print_aterm fmtr t2;
+      pp_close_box fmtr ()
   | TmAdd (t1, t2) -> print_two t1 t2 "+"
   | TmSub (t1, t2) -> print_two t1 t2 "-"
   | TmMul (t1, t2) -> print_two t1 t2 "*"
@@ -104,52 +104,52 @@ and print_appterm t =
   | TmHd t -> print_one t "head"
   | TmTl t -> print_one t "tail"
   | TmIsNil t -> print_one t "isnil"
-  | _ as t -> print_aterm t
+  | _ as t -> pp_print_aterm fmtr t
 
-and print_aterm = function
-  | TmNum n -> print_int n
-  | TmVar v -> print_string v
-  | TmTru -> print_string "true"
-  | TmFal -> print_string "false"
-  | TmNil -> print_string "nil"
+and pp_print_aterm fmtr = function
+  | TmNum n -> pp_print_int fmtr n
+  | TmVar v -> pp_print_string fmtr v
+  | TmTru -> pp_print_string fmtr "true"
+  | TmFal -> pp_print_string fmtr "false"
+  | TmNil -> pp_print_string fmtr "nil"
   | _ as t ->
-      open_hvbox 1;
-      print_string "(";
-      print_cut ();
-      print_term t;
-      print_cut ();
-      print_string ")";
-      close_box ()
+      pp_open_hvbox fmtr 1;
+      pp_print_string fmtr "(";
+      pp_print_cut fmtr ();
+      pp_print_term fmtr t;
+      pp_print_cut fmtr ();
+      pp_print_string fmtr ")";
+      pp_close_box fmtr ()
 
-let rec print_raw_term = function
+let rec pp_print_raw_term fmtr = function
   | TrAbs t ->
-      open_hvbox 1;
-      print_string "lambda.";
-      print_space ();
-      print_raw_term t;
-      close_box ()
-  | t -> print_raw_appterm t
+      pp_open_hvbox fmtr 1;
+      pp_print_string fmtr "lambda.";
+      pp_print_space fmtr ();
+      pp_print_raw_term fmtr t;
+      pp_close_box fmtr ()
+  | t -> pp_print_raw_appterm fmtr t
 
-and print_raw_appterm = function
+and pp_print_raw_appterm fmtr = function
   | TrApp (t1, t2) ->
-      open_hvbox 0;
-      print_raw_appterm t1;
-      print_space ();
-      print_raw_aterm t2;
-      close_box ()
-  | t -> print_raw_aterm t
+      pp_open_hvbox fmtr 0;
+      pp_print_raw_appterm fmtr t1;
+      pp_print_space fmtr ();
+      pp_print_raw_aterm fmtr t2;
+      pp_close_box fmtr ()
+  | t -> pp_print_raw_aterm fmtr t
 
-and print_raw_aterm = function
+and pp_print_raw_aterm fmtr = function
   | TrTemp n ->
-      print_string "&";
-      print_int n
-  | TrId v -> print_string v
-  | TrVar n -> print_int n
+      pp_print_string fmtr "&";
+      pp_print_int fmtr n
+  | TrId v -> pp_print_string fmtr v
+  | TrVar n -> pp_print_int fmtr n
   | t ->
-      open_hvbox 1;
-      print_string "(";
-      print_cut ();
-      print_raw_term t;
-      print_cut ();
-      print_string ")";
-      close_box ()
+      pp_open_hvbox fmtr 1;
+      pp_print_string fmtr "(";
+      pp_print_cut fmtr ();
+      pp_print_raw_term fmtr t;
+      pp_print_cut fmtr ();
+      pp_print_string fmtr ")";
+      pp_close_box fmtr ()

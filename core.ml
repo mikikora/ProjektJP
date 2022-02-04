@@ -205,9 +205,6 @@ let unfold t =
   in
 
   let unsugar = remove_sugar t in
-  let to_print = unsugar_to_term unsugar in
-  print_term to_print;
-  print_newline ();
   remove_names unsugar KeyMap.empty
 
 type 'a env = 'a list
@@ -262,27 +259,27 @@ let rec subtitute_from_env (t : raw_term) (e : machine_value env) =
         let t1' = subtitute_from_env t1 e and t2' = subtitute_from_env t2 e in
         TrApp (t1', t2')
 
+let rec remove_temp_variables t temp_num =
+  match t with
+  | TrTemp n -> if n = temp_num then TrVar n else t
+  | TrId _ | TrVar _ -> t
+  | TrAbs t' -> TrAbs (remove_temp_variables t' (temp_num + 1))
+  | TrApp (t1, t2) ->
+      let t1' = remove_temp_variables t1 temp_num
+      and t2' = remove_temp_variables t2 temp_num in
+      TrApp (t1', t2')
+
+let rec create_temp_variables t temp_num =
+  match t with
+  | TrTemp _ | TrId _ -> t
+  | TrVar n -> if n = temp_num then TrTemp n else t
+  | TrAbs t' -> TrAbs (create_temp_variables t' (temp_num + 1))
+  | TrApp (t1, t2) ->
+      let t1' = create_temp_variables t1 temp_num
+      and t2' = create_temp_variables t2 temp_num in
+      TrApp (t1', t2')
+
 let rec normalize t (e : machine_value env) =
-  let rec create_temp_variables t temp_num =
-    match t with
-    | TrTemp _ | TrId _ -> t
-    | TrVar n -> if n = temp_num then TrTemp n else t
-    | TrAbs t' -> TrAbs (create_temp_variables t' (temp_num + 1))
-    | TrApp (t1, t2) ->
-        let t1' = create_temp_variables t1 temp_num
-        and t2' = create_temp_variables t2 temp_num in
-        TrApp (t1', t2')
-  in
-  let rec remove_temp_variables t temp_num =
-    match t with
-    | TrTemp n -> if n = temp_num then TrVar n else t
-    | TrId _ | TrVar _ -> t
-    | TrAbs t' -> TrAbs (remove_temp_variables t' (temp_num + 1))
-    | TrApp (t1, t2) ->
-        let t1' = remove_temp_variables t1 temp_num
-        and t2' = remove_temp_variables t2 temp_num in
-        TrApp (t1', t2')
-  in
   if is_beta_normal t e then subtitute_from_env t e
   else
     let new_t, env, cont = krivine t e [] in
@@ -300,3 +297,19 @@ let rec normalize t (e : machine_value env) =
     List.fold_left
       (fun acc elem -> TrApp (acc, elem))
       normalized_t normalize_cont
+
+let beta_compare t1 t2 =
+  let t1', e1', cont1 = krivine t1 [] []
+  and t2', e2', cont2 = krivine t2 [] [] in
+  if List.compare_lengths cont1 cont2 <> 0 then false
+  else
+    let normalized_t1 = normalize t1' e1'
+    and normalized_t2 = normalize t2' e2' in
+    if normalized_t1 <> normalized_t2 then false
+    else
+      List.fold_left2
+        (fun acc (t1, e1) (t2, e2) ->
+          let normalized_t1 = normalize t1 e1
+          and normalized_t2 = normalize t2 e2 in
+          acc && normalized_t1 = normalized_t2)
+        true cont1 cont2

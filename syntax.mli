@@ -28,6 +28,7 @@ type term =
   | TmIsNil of term
 
 type raw_term =
+  | TrTemp of int
   | TrId of string
   | TrVar of int
   | TrAbs of raw_term

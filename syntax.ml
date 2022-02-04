@@ -28,6 +28,7 @@ type term =
   | TmIsNil of term
 
 type raw_term =
+  | TrTemp of int (* zmienna wolna wynikająca z wejścia obliczeniami pod lambdę *)
   | TrId of string
   | TrVar of int
   | TrAbs of raw_term
@@ -139,6 +140,9 @@ and print_raw_appterm = function
   | t -> print_raw_aterm t
 
 and print_raw_aterm = function
+  | TrTemp n ->
+      print_string "&";
+      print_int n
   | TrId v -> print_string v
   | TrVar n -> print_int n
   | t ->

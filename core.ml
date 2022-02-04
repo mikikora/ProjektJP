@@ -212,30 +212,29 @@ let unfold t =
 
 type 'a env = 'a list
 type machine_value = Clo of raw_term * machine_value env
-type stack = (term * machine_value env) list
+type stack = (raw_term * machine_value env) list
 
 let print_debug v =
-  print_string ("debug" ^ v);
+  print_string ("debug " ^ v);
   print_newline ();
   print_flush ()
 
-let rec krivine t env cont =
+let rec krivine (t : raw_term) env cont : raw_term * machine_value env * stack =
   match t with
   | TrVar n ->
-      let (Clo (t', env')) = List.nth env n in
-      krivine t' env' cont
+      let (Clo (t', e')) = List.nth env n in
+      krivine t' e' cont
   | TrAbs t' -> (
       match cont with
-      | [] ->
-          (t, env, cont) (* Tutaj sprawdzić przy wypakowywaniu czy działa env *)
+      | [] -> (t, env, cont)
       | (t'', env') :: cont' -> krivine t' (Clo (t'', env') :: env) cont')
   | TrApp (t1, t2) -> krivine t1 env ((t2, env) :: cont)
-  | TrId s -> (t, env, cont)
+  | TrTemp _ | TrId _ -> (t, env, cont)
 
-let rec is_beta_normal t (e : machine_value env) =
+let rec is_beta_normal (t : raw_term) (e : machine_value env) =
   let rec a t e =
     match t with
-    | TrId _ -> true
+    | TrTemp _ | TrId _ -> true
     | TrApp (t1, t2) -> a t1 e && is_beta_normal t2 e
     | TrVar n ->
         let (Clo (new_t, new_e)) = List.nth e n in
@@ -244,16 +243,17 @@ let rec is_beta_normal t (e : machine_value env) =
   in
   match t with
   | TrAbs t -> is_beta_normal t (Clo (TrId "absurd", []) :: e)
-  | TrVar n ->
-      let (Clo (new_t, new_e)) = List.nth e n in
-      is_beta_normal new_t new_e
+  | TrVar n -> (
+      match List.nth_opt e n with
+      | Some (Clo (new_t, new_e)) -> is_beta_normal new_t new_e
+      | None -> true)
   | _ -> a t e
 
-let rec subtitute_from_env t (e : machine_value env) =
+let rec subtitute_from_env (t : raw_term) (e : machine_value env) =
   if e = [] then t
   else
     match t with
-    | TrId _ -> t
+    | TrTemp _ | TrId _ -> t
     | TrVar n ->
         let (Clo (t', e')) = List.nth e n in
         subtitute_from_env t' e'
@@ -263,10 +263,39 @@ let rec subtitute_from_env t (e : machine_value env) =
         TrApp (t1', t2')
 
 let rec normalize t (e : machine_value env) =
-  if is_beta_normal t e then subtitute_from_env t e (* rebuild t from e *)
+  let rec create_temp_variables t temp_num =
+    match t with
+    | TrTemp _ | TrId _ -> t
+    | TrVar n -> if n = temp_num then TrTemp n else t
+    | TrAbs t' -> TrAbs (create_temp_variables t' (temp_num + 1))
+    | TrApp (t1, t2) ->
+        let t1' = create_temp_variables t1 temp_num
+        and t2' = create_temp_variables t2 temp_num in
+        TrApp (t1', t2')
+  in
+  let rec remove_temp_variables t temp_num =
+    match t with
+    | TrTemp n -> if n = temp_num then TrVar n else t
+    | TrId _ | TrVar _ -> t
+    | TrAbs t' -> TrAbs (remove_temp_variables t' (temp_num + 1))
+    | TrApp (t1, t2) ->
+        let t1' = remove_temp_variables t1 temp_num
+        and t2' = remove_temp_variables t2 temp_num in
+        TrApp (t1', t2')
+  in
+  if is_beta_normal t e then subtitute_from_env t e
   else
     let new_t, env, cont = krivine t e [] in
-    let normalized_t = normalize new_t env in
+    let normalized_t =
+      match new_t with
+      | TrAbs t' ->
+          let temp_t = create_temp_variables t' 0 in
+          let normalized_temp_t = normalize temp_t env in
+          TrAbs (remove_temp_variables normalized_temp_t 0)
+      | TrId _ | TrVar _ | TrTemp _ -> new_t
+      | _ -> failwith "what?"
+    in
+    assert (is_beta_normal normalized_t []);
     let normalize_cont = List.map (function t, e -> normalize t e) cont in
     List.fold_left
       (fun acc elem -> TrApp (acc, elem))

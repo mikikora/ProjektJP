@@ -1,3 +1,4 @@
+f
 *.annot
 *.cmo
 *.cma
@@ -7,6 +8,11 @@
 *.cmx
 *.cmxs
 *.cmxa
+lexer.ml
+parser.automaton
+parser.conflicts
+parser.ml
+parser.mli
 
 # ocamlbuild working directory
 _build/

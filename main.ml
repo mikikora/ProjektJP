@@ -1,3 +1,8 @@
+(*
+   Mikołaj Korobczak 310115
+   Projekt nr 1 na języki programowania
+*)
+
 open Support.Error
 open Syntax
 open Format

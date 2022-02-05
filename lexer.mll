@@ -27,6 +27,7 @@
 
   let reservedWords = [
     (* Keywords *)
+    ("pair", PAIR);
     ("lambda", LAMBDA);
     ("true", TRUE);
     ("false", FALSE);
@@ -40,6 +41,10 @@
     ("isnil", ISNIL);
     ("then", THEN);
     ("else", ELSE);
+    ("add", ADD);
+    ("sub", SUB);
+    ("mul", MUL);
+    ("eq", EQ);
     (* symbols *)
     ("+", ADD);
     ("-", SUB);

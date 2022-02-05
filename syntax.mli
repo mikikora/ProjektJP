@@ -36,3 +36,6 @@ type raw_term =
 
 val pp_print_term : Format.formatter -> term -> unit
 val pp_print_raw_term : Format.formatter -> raw_term -> unit
+(* To debbug *)
+val print_term : term -> unit
+val print_raw_term : raw_term -> unit

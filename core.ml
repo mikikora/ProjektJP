@@ -66,7 +66,7 @@ let unfold t =
         let new_t = remove_sugar t and fls = remove_sugar TmFal in
         UsApp (new_t, fls)
     | TmNum n ->
-        let succ n =
+        let _succ n =
           UsAbs
             ( "f",
               UsAbs
@@ -74,7 +74,7 @@ let unfold t =
             )
         in
         let rec generate_num n0 acc =
-          if acc = n then n0 else generate_num (succ n0) (acc + 1)
+          if acc = n then n0 else generate_num (_succ n0) (acc + 1)
         in
         let zero = UsAbs ("f", UsAbs ("x", UsVar "x")) in
         generate_num zero 0
@@ -96,7 +96,7 @@ let unfold t =
           )
     | TmSub (t1, t2) ->
         let new_t1 = remove_sugar t1 and new_t2 = remove_sugar t2 in
-        let succ =
+        let _succ =
           TmAbs
             ( "n",
               TmAbs
@@ -114,7 +114,7 @@ let unfold t =
         in
         let ss =
           TmAbs
-            ("p", TmPair (TmSnd (TmVar "p"), TmApp (succ, TmSnd (TmVar "p"))))
+            ("p", TmPair (TmSnd (TmVar "p"), TmApp (_succ, TmSnd (TmVar "p"))))
         in
         let prd =
           remove_sugar (TmAbs ("m", TmFst (TmApp (TmApp (TmVar "m", ss), zz))))
@@ -218,7 +218,7 @@ let print_debug v =
 
 let rec krivine (t : raw_term) env cont : raw_term * machine_value env * stack =
   match t with
-  | TrVar n ->
+  | TrVar n -> 
       let (Clo (t', e')) = List.nth env n in
       krivine t' e' cont
   | TrAbs t' -> (
@@ -233,17 +233,17 @@ let rec is_beta_normal (t : raw_term) (e : machine_value env) =
     match t with
     | TrTemp _ | TrId _ -> true
     | TrApp (t1, t2) -> a t1 e && is_beta_normal t2 e
-    | TrVar n ->
+    | TrVar n -> 
         let (Clo (new_t, new_e)) = List.nth e n in
         a new_t new_e
     | _ -> false
   in
   match t with
   | TrAbs t -> is_beta_normal t (Clo (TrId "absurd", []) :: e)
-  | TrVar n -> (
+  | TrVar n -> ( 
       match List.nth_opt e n with
       | Some (Clo (new_t, new_e)) -> is_beta_normal new_t new_e
-      | None -> true)
+      | None -> false)
   | _ -> a t e
 
 let rec subtitute_from_env (t : raw_term) (e : machine_value env) =
@@ -251,10 +251,11 @@ let rec subtitute_from_env (t : raw_term) (e : machine_value env) =
   else
     match t with
     | TrTemp _ | TrId _ -> t
-    | TrVar n ->
-        let (Clo (t', e')) = List.nth e n in
-        subtitute_from_env t' e'
-    | TrAbs t' -> TrAbs (subtitute_from_env t' e)
+    | TrVar n -> 
+        (match List.nth_opt e n with
+        | Some (Clo (t', e')) -> subtitute_from_env t' e'
+        | None -> t)
+    | TrAbs t' -> TrAbs (subtitute_from_env t' ((Clo (TrId "Absurd", []))::e))
     | TrApp (t1, t2) ->
         let t1' = subtitute_from_env t1 e and t2' = subtitute_from_env t2 e in
         TrApp (t1', t2')
@@ -272,7 +273,7 @@ let rec remove_temp_variables t temp_num =
 let rec create_temp_variables t temp_num =
   match t with
   | TrTemp _ | TrId _ -> t
-  | TrVar n -> if n = temp_num then TrTemp n else t
+  | TrVar n -> if n >= temp_num then TrTemp n else t
   | TrAbs t' -> TrAbs (create_temp_variables t' (temp_num + 1))
   | TrApp (t1, t2) ->
       let t1' = create_temp_variables t1 temp_num
@@ -285,8 +286,8 @@ let rec normalize t (e : machine_value env) =
     let new_t, env, cont = krivine t e [] in
     let normalized_t =
       match new_t with
-      | TrAbs t' ->
-          let temp_t = create_temp_variables t' 0 in
+      | TrAbs _ ->
+          let temp_t = create_temp_variables new_t 0 in
           let normalized_temp_t = normalize temp_t env in
           TrAbs (remove_temp_variables normalized_temp_t 0)
       | TrId _ | TrVar _ | TrTemp _ -> new_t
@@ -313,3 +314,23 @@ let beta_compare t1 t2 =
           and normalized_t2 = normalize t2 e2 in
           acc && normalized_t1 = normalized_t2)
         true cont1 cont2
+
+let restore_names t =
+  let number_of_prims = ref 0 in
+  let create_name () =
+    number_of_prims := !number_of_prims + 1;
+    String.init !number_of_prims (function n -> if n = 0 then 'x' else '\'')
+  in
+  let rec aux gamma = function
+    | TrTemp _ -> failwith "can't restore names in unfinished term"
+    | TrId v -> TmVar ("&" ^ v)
+    | TrVar n -> TmVar (List.nth gamma n)
+    | TrAbs t ->
+        let fresh_var = create_name () in
+        let t' = aux (fresh_var :: gamma) t in
+        TmAbs (fresh_var, t')
+    | TrApp (t1, t2) ->
+        let t1' = aux gamma t1 and t2' = aux gamma t2 in
+        TmApp (t1', t2')
+  in
+  aux [] t

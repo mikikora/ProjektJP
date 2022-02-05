@@ -3,12 +3,19 @@ open Syntax
 open Format
 open Core
 
-let inFile = "input.f"
+let inFile : string option ref = ref None
 let outfile = "output.f"
 
-let parseFile inFile =
+let parseFile () =
+  Arg.parse [] (function s -> 
+    match !inFile with
+    | Some _ -> failwith "You must specify at most one input file"
+    | None -> inFile := Some(s)) "";
+  let infile = (match !inFile with
+    | None -> "input.f"
+    | Some v -> v) in
   let ch_in =
-    try open_in inFile
+    try open_in infile
     with _ ->
       print_string "Nie udało się otworzyć pliku";
       exit 1
@@ -25,7 +32,8 @@ let parseFile inFile =
 let normalizing t formatter =
   let unfolded = unfold t in
   let res = normalize unfolded [] in
-  pp_print_raw_term formatter res
+  let restored = restore_names res in
+  pp_print_term formatter restored
 
 let comparing t1 t2 formatter =
   let unfolded_t1 = unfold t1 and unfolded_t2 = unfold t2 in
@@ -33,12 +41,13 @@ let comparing t1 t2 formatter =
   pp_print_bool formatter res
 
 let main () =
-  let t1, t2_option = parseFile inFile in
+  let t1, t2_option = parseFile () in
   let ch_out = open_out outfile in
   let formatter = formatter_of_out_channel ch_out in
   (match t2_option with
   | None -> normalizing t1 formatter
   | Some t2 -> comparing t1 t2 formatter);
+  pp_print_newline formatter ();
   pp_print_flush formatter ();
   close_out ch_out;
   exit 0

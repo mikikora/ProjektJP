@@ -29,6 +29,7 @@
 %token COMMA
 %token THEN
 %token ELSE
+%token PAIR
 
 %start toplevel
 %type <Syntax.term * Syntax.term option> toplevel
@@ -59,12 +60,22 @@ appterm:
   { $1 }
   | appterm aterm
   { TmApp ($1, $2) }
+  | PAIR t1=term t2=term
+  { TmPair (t1, t2) }
+  | ADD t1=aterm t2=aterm
+  { TmAdd (t1, t2) }
   | t1=aterm ADD t2=aterm
   { TmAdd (t1, t2) }
+  | SUB t1=aterm t2=aterm
+  { TmSub(t1, t2) }
   | t1=aterm SUB t2=aterm
   { TmSub (t1, t2) }
+  | MUL t1=aterm t2=aterm
+  { TmMul (t1, t2) }
   | t1=aterm MUL t2=aterm
   { TmMul (t1, t2) }
+  | EQ t1=term t2=term
+  { TmEq (t1, t2) }
   | t1=aterm EQ t2=aterm
   { TmEq (t1, t2) }
   | FIX t=aterm

@@ -231,7 +231,8 @@ let rec krivine (t : raw_term) env cont : raw_term * machine_value env * stack =
 let rec is_beta_normal (t : raw_term) (e : machine_value env) =
   let rec a t e =
     match t with
-    | TrTemp _ | TrId _ -> true
+    | TrTemp _
+    | TrId _ -> true
     | TrApp (t1, t2) -> a t1 e && is_beta_normal t2 e
     | TrVar n -> 
         let (Clo (new_t, new_e)) = List.nth e n in
@@ -239,7 +240,7 @@ let rec is_beta_normal (t : raw_term) (e : machine_value env) =
     | _ -> false
   in
   match t with
-  | TrAbs t -> is_beta_normal t (Clo (TrId "absurd", []) :: e)
+  | TrAbs t -> is_beta_normal t (Clo (TrTemp (-1), []) :: e)
   | TrVar n -> ( 
       match List.nth_opt e n with
       | Some (Clo (new_t, new_e)) -> is_beta_normal new_t new_e
@@ -251,11 +252,11 @@ let rec subtitute_from_env (t : raw_term) (e : machine_value env) =
   else
     match t with
     | TrTemp _ | TrId _ -> t
-    | TrVar n -> 
-        (match List.nth_opt e n with
-        | Some (Clo (t', e')) -> subtitute_from_env t' e'
-        | None -> t)
-    | TrAbs t' -> TrAbs (subtitute_from_env t' ((Clo (TrId "Absurd", []))::e))
+    | TrVar n -> let Clo(t', e') = List.nth e n in
+        (match t' with
+        | TrTemp (-1) -> t
+        | _ -> subtitute_from_env t' e')
+    | TrAbs t' -> TrAbs (subtitute_from_env t' ((Clo (TrTemp (-1), []))::e))
     | TrApp (t1, t2) ->
         let t1' = subtitute_from_env t1 e and t2' = subtitute_from_env t2 e in
         TrApp (t1', t2')

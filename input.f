@@ -1,1 +1,1 @@
-2 + 2; 4
+lambda x . lambda y. ((lambda z . x) (lambda z . y))

@@ -259,39 +259,45 @@ let rec subtitute_from_env (t : raw_term) (e : machine_value env) =
         let t1' = subtitute_from_env t1 e and t2' = subtitute_from_env t2 e in
         TrApp (t1', t2')
 
-let rec remove_temp_variables t temp_num =
+let lambda_id = ref 0
+
+let rec remove_temp_variables t temp_num id =
   match t with
-  | TrTemp n -> if n = temp_num then TrVar n else t
+  | TrTemp n -> if temp_num = temp_num then TrVar temp_num else t
   | TrId _ | TrVar _ -> t
-  | TrAbs t' -> TrAbs (remove_temp_variables t' (temp_num + 1))
+  | TrAbs t' -> TrAbs (remove_temp_variables t' (temp_num + 1) id)
   | TrApp (t1, t2) ->
-      let t1' = remove_temp_variables t1 temp_num
-      and t2' = remove_temp_variables t2 temp_num in
+      let t1' = remove_temp_variables t1 temp_num id
+      and t2' = remove_temp_variables t2 temp_num id in
       TrApp (t1', t2')
 
-let rec create_temp_variables t temp_num =
+let rec create_temp_variables t temp_num id =
   match t with
   | TrTemp _ | TrId _ -> t
-  | TrVar n -> if n = temp_num then TrTemp n else t
-  | TrAbs t' -> TrAbs (create_temp_variables t' (temp_num + 1))
+  | TrVar n -> if n = temp_num then TrTemp id else t
+  | TrAbs t' -> TrAbs (create_temp_variables t' (temp_num + 1) id)
   | TrApp (t1, t2) ->
-      let t1' = create_temp_variables t1 temp_num
-      and t2' = create_temp_variables t2 temp_num in
+      let t1' = create_temp_variables t1 temp_num id
+      and t2' = create_temp_variables t2 temp_num id in
       TrApp (t1', t2')
 
 let rec normalize t (e : machine_value env) =
+  (* print_string "normalize: "; print_raw_term t; print_newline (); *)
   if is_beta_normal t e then subtitute_from_env t e
   else
     let new_t, env, cont = krivine t e [] in
     let normalized_t =
       match new_t with
       | TrAbs t' ->
-          let temp_t = create_temp_variables t' 0 in
+          let id = !lambda_id in
+          let () = lambda_id := !lambda_id + 1 in
+          let temp_t = create_temp_variables t' 0 id in
           let normalized_temp_t = normalize temp_t env in
-          TrAbs (remove_temp_variables normalized_temp_t 0)
+          TrAbs (remove_temp_variables normalized_temp_t 0 id)
       | TrId _ | TrVar _ | TrTemp _ -> new_t
       | _ -> failwith "what?"
     in
+    (* print_string "normalized: "; print_raw_term normalized_t; print_newline(); *)
     assert (is_beta_normal normalized_t []);
     let normalize_cont = List.map (function t, e -> normalize t e) cont in
     List.fold_left

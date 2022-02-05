@@ -1,1 +1,1 @@
-true
+lambda x. lambda x'. x'

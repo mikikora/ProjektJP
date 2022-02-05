@@ -218,7 +218,7 @@ let print_debug v =
 
 let rec krivine (t : raw_term) env cont : raw_term * machine_value env * stack =
   match t with
-  | TrVar n -> 
+  | TrVar n ->
       let (Clo (t', e')) = List.nth env n in
       krivine t' e' cont
   | TrAbs t' -> (
@@ -231,17 +231,16 @@ let rec krivine (t : raw_term) env cont : raw_term * machine_value env * stack =
 let rec is_beta_normal (t : raw_term) (e : machine_value env) =
   let rec a t e =
     match t with
-    | TrTemp _
-    | TrId _ -> true
+    | TrTemp _ | TrId _ -> true
     | TrApp (t1, t2) -> a t1 e && is_beta_normal t2 e
-    | TrVar n -> 
+    | TrVar n ->
         let (Clo (new_t, new_e)) = List.nth e n in
         a new_t new_e
     | _ -> false
   in
   match t with
   | TrAbs t -> is_beta_normal t (Clo (TrTemp (-1), []) :: e)
-  | TrVar n -> ( 
+  | TrVar n -> (
       match List.nth_opt e n with
       | Some (Clo (new_t, new_e)) -> is_beta_normal new_t new_e
       | None -> false)
@@ -252,11 +251,10 @@ let rec subtitute_from_env (t : raw_term) (e : machine_value env) =
   else
     match t with
     | TrTemp _ | TrId _ -> t
-    | TrVar n -> let Clo(t', e') = List.nth e n in
-        (match t' with
-        | TrTemp (-1) -> t
-        | _ -> subtitute_from_env t' e')
-    | TrAbs t' -> TrAbs (subtitute_from_env t' ((Clo (TrTemp (-1), []))::e))
+    | TrVar n -> (
+        let (Clo (t', e')) = List.nth e n in
+        match t' with TrTemp -1 -> t | _ -> subtitute_from_env t' e')
+    | TrAbs t' -> TrAbs (subtitute_from_env t' (Clo (TrTemp (-1), []) :: e))
     | TrApp (t1, t2) ->
         let t1' = subtitute_from_env t1 e and t2' = subtitute_from_env t2 e in
         TrApp (t1', t2')
@@ -274,7 +272,7 @@ let rec remove_temp_variables t temp_num =
 let rec create_temp_variables t temp_num =
   match t with
   | TrTemp _ | TrId _ -> t
-  | TrVar n -> if n >= temp_num then TrTemp n else t
+  | TrVar n -> if n = temp_num then TrTemp n else t
   | TrAbs t' -> TrAbs (create_temp_variables t' (temp_num + 1))
   | TrApp (t1, t2) ->
       let t1' = create_temp_variables t1 temp_num
@@ -287,8 +285,8 @@ let rec normalize t (e : machine_value env) =
     let new_t, env, cont = krivine t e [] in
     let normalized_t =
       match new_t with
-      | TrAbs _ ->
-          let temp_t = create_temp_variables new_t 0 in
+      | TrAbs t' ->
+          let temp_t = create_temp_variables t' 0 in
           let normalized_temp_t = normalize temp_t env in
           TrAbs (remove_temp_variables normalized_temp_t 0)
       | TrId _ | TrVar _ | TrTemp _ -> new_t

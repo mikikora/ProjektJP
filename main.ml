@@ -7,13 +7,14 @@ let inFile : string option ref = ref None
 let outfile = "output.f"
 
 let parseFile () =
-  Arg.parse [] (function s -> 
-    match !inFile with
-    | Some _ -> failwith "You must specify at most one input file"
-    | None -> inFile := Some(s)) "";
-  let infile = (match !inFile with
-    | None -> "input.f"
-    | Some v -> v) in
+  Arg.parse []
+    (function
+      | s -> (
+          match !inFile with
+          | Some _ -> failwith "You must specify at most one input file"
+          | None -> inFile := Some s))
+    "";
+  let infile = match !inFile with None -> "input.f" | Some v -> v in
   let ch_in =
     try open_in infile
     with _ ->

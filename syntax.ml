@@ -154,8 +154,5 @@ and pp_print_raw_aterm fmtr = function
       pp_print_string fmtr ")";
       pp_close_box fmtr ()
 
-let print_term t = 
-  pp_print_term std_formatter t
-
-let print_raw_term t = 
-  pp_print_raw_term std_formatter t
+let print_term t = pp_print_term std_formatter t
+let print_raw_term t = pp_print_raw_term std_formatter t

@@ -1,8 +1,9 @@
 # ProjektJP
 Projekt 1 na języki programowania
 ## Kompilowanie
+Do kompilacji będą potrzebne programy `ocamllex` i `menhir`, które można zainstalować poleceniem `opam install ocamllex menhir`
 Aby skompilować wystarczy wpisać komendę `make`. Program wynikowy będzie nosił nazwę `f`.
-Aby ponownie skompilować najlepiej wpisać `make clean` a następnie `make` lub `make install`, które robi te rzeczy automatycznie
+Aby ponownie skompilować najlepiej wpisać `make clean`, a następnie `make` lub `make install`, które robi te rzeczy automatycznie
 
 ## Działanie
 ### Wejście

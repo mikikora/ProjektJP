@@ -51,8 +51,7 @@ term:
   { TmIf (t1, t2, t3) }
   | LAMBDA v=VAR DOT t=term
   { TmAbs (v, t) }
-  | LPAR t1=term COMMA t2=term RPAR
-  { TmPair (t1, t2) }
+
 
 
 appterm:
@@ -106,5 +105,7 @@ aterm:
   { TmFal }
   | NIL
   { TmNil }
+  | LPAR t1=term COMMA t2=term RPAR
+  { TmPair (t1, t2) }
 
 

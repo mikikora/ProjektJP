@@ -1,1 +1,1 @@
-lambda x. _z x
+lambda x. lambda x'. x x'

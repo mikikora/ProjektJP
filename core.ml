@@ -263,7 +263,7 @@ let lambda_id = ref 0
 
 let rec remove_temp_variables t temp_num id =
   match t with
-  | TrTemp n -> if temp_num = temp_num then TrVar temp_num else t
+  | TrTemp n -> if n = id then TrVar temp_num else t
   | TrId _ | TrVar _ -> t
   | TrAbs t' -> TrAbs (remove_temp_variables t' (temp_num + 1) id)
   | TrApp (t1, t2) ->

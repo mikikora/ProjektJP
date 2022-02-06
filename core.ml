@@ -292,7 +292,7 @@ let rec normalize t (e : machine_value env) =
           let id = !lambda_id in
           let () = lambda_id := !lambda_id + 1 in
           let temp_t = create_temp_variables t' 0 id in
-          let normalized_temp_t = normalize temp_t env in
+          let normalized_temp_t = normalize temp_t ((Clo(TrTemp(-1), []))::env) in
           TrAbs (remove_temp_variables normalized_temp_t 0 id)
       | TrId _ | TrVar _ | TrTemp _ -> new_t
       | _ -> failwith "what?"
@@ -328,7 +328,7 @@ let restore_names t =
   in
   let rec aux gamma = function
     | TrTemp _ -> failwith "can't restore names in unfinished term"
-    | TrId v -> TmVar ("&" ^ v)
+    | TrId v -> TmVar ("_" ^ v)
     | TrVar n -> TmVar (List.nth gamma n)
     | TrAbs t ->
         let fresh_var = create_name () in
